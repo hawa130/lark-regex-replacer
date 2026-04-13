@@ -30,6 +30,29 @@ export function useRegexSearch(
   const [error, setError] = useState<string | null>(null)
   const lastPatternRef = useRef("")
 
+  const applyHighlights = useCallback(
+    async (allMatches: MatchResult[], activeIndex: number) => {
+      if (!docRef) return
+
+      await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
+        docRef,
+      ).catch(() => {})
+
+      if (allMatches.length === 0) return
+
+      const highlightRefs = allMatches.map((m, i) => ({
+        ...m.blockRef,
+        range: [m.index, m.index + m.length] as [number, number],
+        style: { color: i === activeIndex ? "R500" : "Y500" },
+      }))
+
+      await docMiniApp.Block.TextualBlock.highlightTexts(
+        highlightRefs,
+      ).catch(() => {})
+    },
+    [docMiniApp, docRef],
+  )
+
   const search = useCallback(
     async (pattern: string, options: SearchOptions) => {
       lastPatternRef.current = pattern
@@ -38,7 +61,6 @@ export function useRegexSearch(
       if (!pattern || !docRef) {
         setMatches([])
         setCurrentIndex(-1)
-        // Clear highlights when search is cleared
         if (docRef) {
           await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
             docRef,
@@ -58,21 +80,10 @@ export function useRegexSearch(
       setIsSearching(true)
 
       try {
-        // Clear previous highlights
-        await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef)
-
-        // Get document tree and collect textual blocks
         const rootBlock = await docMiniApp.Document.getRootBlock(docRef)
         const textBlocks = collectTextualBlocks(rootBlock)
 
-        // Search each block
         const allMatches: MatchResult[] = []
-        const highlightRefs: {
-          docRef: { docToken: string }
-          blockId: number
-          range: [number, number]
-          style: { color: string }
-        }[] = []
 
         for (const block of textBlocks) {
           const rawText = getRawTextFromBlock(docMiniApp, block)
@@ -88,24 +99,14 @@ export function useRegexSearch(
               length: m.length,
               match: m.match,
             })
-
-            highlightRefs.push({
-              ...block.ref,
-              range: [m.index, m.index + m.length],
-              style: { color: "Y500" },
-            })
           }
         }
 
+        const initialIndex = allMatches.length > 0 ? 0 : -1
         setMatches(allMatches)
-        setCurrentIndex(allMatches.length > 0 ? 0 : -1)
+        setCurrentIndex(initialIndex)
 
-        // Highlight all matches
-        if (highlightRefs.length > 0) {
-          await docMiniApp.Block.TextualBlock.highlightTexts(
-            highlightRefs,
-          ).catch(() => {})
-        }
+        await applyHighlights(allMatches, initialIndex)
       } catch (e) {
         console.error("Search error:", e)
         setError("搜索出错")
@@ -113,7 +114,7 @@ export function useRegexSearch(
         setIsSearching(false)
       }
     },
-    [docMiniApp, docRef],
+    [docMiniApp, docRef, applyHighlights],
   )
 
   const goToMatch = useCallback(
@@ -124,11 +125,13 @@ export function useRegexSearch(
         ((index % matches.length) + matches.length) % matches.length
       setCurrentIndex(wrappedIndex)
 
+      await applyHighlights(matches, wrappedIndex)
+
       const match = matches[wrappedIndex]
       const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
       await docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
     },
-    [docMiniApp, docRef, matches],
+    [docMiniApp, docRef, matches, applyHighlights],
   )
 
   const next = useCallback(() => {
