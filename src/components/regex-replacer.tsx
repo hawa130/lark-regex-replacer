@@ -1,11 +1,10 @@
-import { ChevronDown, ChevronUp } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
-import { Button } from "@/components/ui/button"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useDocMiniApp } from "@/hooks/use-doc-miniapp"
 import { useRegexSearch } from "@/hooks/use-regex-search"
 
+import { ActionBar } from "./action-bar"
 import { ReplaceInput } from "./replace-input"
 import { SearchInput } from "./search-input"
 import { StatusBar } from "./status-bar"
@@ -101,11 +100,16 @@ export function RegexReplacer() {
     replaceAll(replacement, pattern, options)
   }, [replaceAll, replacement, pattern, options])
 
-  const hasMatches = matches.length > 0
+  const matchLabel =
+    matches.length > 0
+      ? `${currentIndex + 1}/${matches.length}`
+      : pattern
+        ? "无结果"
+        : ""
 
   return (
     <TooltipProvider delay={300}>
-      <div className="flex flex-col gap-2 p-3">
+      <div className="flex flex-col gap-2 px-3 pb-3">
         <SearchInput
           pattern={pattern}
           onPatternChange={handlePatternChange}
@@ -119,8 +123,6 @@ export function RegexReplacer() {
           onWholeWordChange={(v) =>
             handleOptionChange(setWholeWord, v, "wholeWord")
           }
-          matchCount={matches.length}
-          currentIndex={currentIndex}
           onKeyDown={handleKeyDown}
         />
 
@@ -129,39 +131,15 @@ export function RegexReplacer() {
           onReplacementChange={setReplacement}
         />
 
-        <div className="flex items-center gap-1.5">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={prev}
-            disabled={!hasMatches}
-          >
-            <ChevronUp />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={next}
-            disabled={!hasMatches}
-          >
-            <ChevronDown />
-          </Button>
-          <div className="flex-1" />
-          <Button
-            variant="outline"
-            onClick={handleReplace}
-            disabled={!editable || !hasMatches}
-          >
-            替换
-          </Button>
-          <Button
-            variant="default"
-            onClick={handleReplaceAll}
-            disabled={!editable || !hasMatches}
-          >
-            全部替换
-          </Button>
-        </div>
+        <ActionBar
+          matchLabel={matchLabel}
+          hasMatches={matches.length > 0}
+          editable={editable}
+          onPrev={prev}
+          onNext={next}
+          onReplace={handleReplace}
+          onReplaceAll={handleReplaceAll}
+        />
 
         <StatusBar error={error} isSearching={isSearching} />
       </div>

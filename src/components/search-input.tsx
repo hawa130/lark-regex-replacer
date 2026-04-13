@@ -17,8 +17,6 @@ interface SearchInputProps {
   onCaseSensitiveChange: (value: boolean) => void
   wholeWord: boolean
   onWholeWordChange: (value: boolean) => void
-  matchCount: number
-  currentIndex: number
   onKeyDown: (e: React.KeyboardEvent) => void
 }
 
@@ -31,34 +29,18 @@ export function SearchInput({
   onCaseSensitiveChange,
   wholeWord,
   onWholeWordChange,
-  matchCount,
-  currentIndex,
   onKeyDown,
 }: SearchInputProps) {
-  const matchLabel =
-    matchCount > 0
-      ? `${currentIndex + 1}/${matchCount}`
-      : pattern
-        ? "无结果"
-        : ""
-
   return (
     <div className="flex items-center gap-1.5">
-      <div className="relative flex-1">
-        <Input
-          value={pattern}
-          onChange={(e) => onPatternChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder="查找..."
-          className="h-8 pr-16 text-sm"
-          autoFocus
-        />
-        {matchLabel && (
-          <span className="text-muted-foreground pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 text-xs">
-            {matchLabel}
-          </span>
-        )}
-      </div>
+      <Input
+        value={pattern}
+        onChange={(e) => onPatternChange(e.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="查找..."
+        className="h-8 flex-1 text-sm"
+        autoFocus
+      />
 
       <div className="flex items-center gap-0.5">
         <Tooltip>

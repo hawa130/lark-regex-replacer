@@ -23,6 +23,10 @@ src/
   components/ui/      # shadcn/ui base components
 ```
 
+## Design Principles
+
+- Keep components fine-grained: each component should have a single responsibility and render only its own UI. Container components orchestrate state; leaf components render markup.
+
 ## Check Scripts
 
 Run before committing:
