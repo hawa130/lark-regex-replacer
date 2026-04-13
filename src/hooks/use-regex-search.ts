@@ -112,7 +112,7 @@ export function useRegexSearch(
         await applyHighlights(allMatches, initialIndex)
 
         // Scroll to the current match
-        if (initialIndex >= 0 && preferIndex !== undefined) {
+        if (initialIndex >= 0) {
           const match = allMatches[initialIndex]
           const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
           await docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
