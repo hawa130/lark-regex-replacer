@@ -67,27 +67,28 @@ export function useRegexSearch(
   const lastPatternRef = useRef("")
   const blockOrderRef = useRef<Map<number, number>>(new Map())
   const matchesRef = useRef<MatchResult[]>([])
+  const currentIndexRef = useRef(-1)
   const abortRef = useRef<AbortController | null>(null)
 
+  /** Apply highlights: one call, current in red, rest in yellow */
   const applyHighlights = useCallback(
     async (allMatches: MatchResult[], activeIndex: number) => {
       if (!docRef) return
 
-      await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef).catch(
-        () => {},
-      )
+      if (allMatches.length === 0) {
+        await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
+          docRef,
+        ).catch(() => {})
+        return
+      }
 
-      if (allMatches.length === 0) return
-
-      const highlightRefs = allMatches.map((m, i) => ({
+      const refs = allMatches.map((m, i) => ({
         ...m.blockRef,
         range: [m.index, m.index + m.length] as [number, number],
-        style: { color: i === activeIndex ? "R500" : "Y500" },
+        style: { color: (i === activeIndex ? "R500" : "Y500") as string },
       }))
 
-      await docMiniApp.Block.TextualBlock.highlightTexts(highlightRefs).catch(
-        () => {},
-      )
+      await docMiniApp.Block.TextualBlock.highlightTexts(refs).catch(() => {})
     },
     [docMiniApp, docRef],
   )
@@ -139,7 +140,9 @@ export function useRegexSearch(
       if (m.length === 0) return
 
       const wrappedIndex = ((index % m.length) + m.length) % m.length
+
       setCurrentIndex(wrappedIndex)
+      currentIndexRef.current = wrappedIndex
 
       await applyHighlights(m, wrappedIndex)
       await selectMatch(m[wrappedIndex])
@@ -161,6 +164,7 @@ export function useRegexSearch(
         setMatches([])
         matchesRef.current = []
         setCurrentIndex(-1)
+        currentIndexRef.current = -1
         if (docRef) {
           await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
             docRef,
@@ -175,6 +179,7 @@ export function useRegexSearch(
         setMatches([])
         matchesRef.current = []
         setCurrentIndex(-1)
+        currentIndexRef.current = -1
         return
       }
 
@@ -218,6 +223,7 @@ export function useRegexSearch(
 
         if (allMatches.length === 0) {
           setCurrentIndex(-1)
+          currentIndexRef.current = -1
           await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef)
           return
         }
@@ -360,6 +366,7 @@ export function useRegexSearch(
         setMatches([])
         matchesRef.current = []
         setCurrentIndex(-1)
+        currentIndexRef.current = -1
       } catch (e) {
         console.error("Replace all error:", e)
       }
