@@ -1,0 +1,15 @@
+{
+  "manifestVersion": 1,
+  "appID": "cli_a956dfe527a7dcc3",
+  "appType": "docs-addon",
+  "blockTypeID": "blk_69dc63f8869f0ccc23e822cc",
+  "projectName": "lark-regex-replacer",
+  "contributes": {
+    "topbar": {
+      "view": "index.html",
+      "initialHeight": 160,
+      "initialWidth": 340,
+      "minify": true
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lark_open_doc_search": {
+      "command": "npx",
+      "args": ["-y", "@larksuiteoapi/lark-mcp", "recall-developer-documents"]
+    }
+  }
+}
