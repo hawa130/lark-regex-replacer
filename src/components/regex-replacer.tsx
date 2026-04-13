@@ -8,7 +8,6 @@ import { buildRegex } from "@/lib/block-text"
 import { ActionBar } from "./action-bar"
 import { ReplaceInput } from "./replace-input"
 import { SearchInput } from "./search-input"
-import { StatusBar } from "./status-bar"
 
 export function RegexReplacer() {
   const { docMiniApp, docRef, editable, onDocumentChange } = useDocMiniApp()
@@ -99,8 +98,9 @@ export function RegexReplacer() {
     replaceAll(replacement, pattern, options)
   }, [replaceAll, replacement, pattern, options])
 
-  const matchLabel =
-    matches.length > 0
+  const matchLabel = error
+    ? error
+    : matches.length > 0
       ? `${currentIndex + 1}/${matches.length}`
       : pattern
         ? "无结果"
@@ -124,6 +124,7 @@ export function RegexReplacer() {
         <SearchInput
           pattern={pattern}
           onPatternChange={handlePatternChange}
+          invalid={!!error}
           isRegex={isRegex}
           onIsRegexChange={(v) => handleOptionChange(setIsRegex, v, "isRegex")}
           caseSensitive={caseSensitive}
@@ -146,14 +147,13 @@ export function RegexReplacer() {
         <ActionBar
           matchLabel={matchLabel}
           hasMatches={matches.length > 0}
-          editable={editable}
+          disabled={!editable || isSearching}
           onPrev={prev}
           onNext={next}
           onReplace={handleReplace}
           onReplaceAll={handleReplaceAll}
         />
 
-        <StatusBar error={error} isSearching={isSearching} />
       </div>
     </TooltipProvider>
   )

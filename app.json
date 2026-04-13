@@ -7,7 +7,7 @@
   "contributes": {
     "topbar": {
       "view": "index.html",
-      "initialHeight": 148,
+      "initialHeight": 136,
       "initialWidth": 340,
       "minify": true
     }

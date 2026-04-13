@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 interface ActionBarProps {
   matchLabel: string
   hasMatches: boolean
-  editable: boolean
+  disabled: boolean
   onPrev: () => void
   onNext: () => void
   onReplace: () => void
@@ -15,7 +15,7 @@ interface ActionBarProps {
 export function ActionBar({
   matchLabel,
   hasMatches,
-  editable,
+  disabled,
   onPrev,
   onNext,
   onReplace,
@@ -41,14 +41,14 @@ export function ActionBar({
         <Button
           variant="outline"
           onClick={onReplace}
-          disabled={!editable || !hasMatches}
+          disabled={disabled || !hasMatches}
         >
           替换
         </Button>
         <Button
           variant="default"
           onClick={onReplaceAll}
-          disabled={!editable || !hasMatches}
+          disabled={disabled || !hasMatches}
         >
           全部替换
         </Button>

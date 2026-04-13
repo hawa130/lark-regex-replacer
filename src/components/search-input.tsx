@@ -15,6 +15,7 @@ import {
 interface SearchInputProps {
   pattern: string
   onPatternChange: (value: string) => void
+  invalid: boolean
   isRegex: boolean
   onIsRegexChange: (value: boolean) => void
   caseSensitive: boolean
@@ -27,6 +28,7 @@ interface SearchInputProps {
 export function SearchInput({
   pattern,
   onPatternChange,
+  invalid,
   isRegex,
   onIsRegexChange,
   caseSensitive,
@@ -43,6 +45,7 @@ export function SearchInput({
         onKeyDown={onKeyDown}
         placeholder="查找..."
         className="text-sm"
+        aria-invalid={invalid}
         autoFocus
       />
       <InputGroupAddon align="inline-end">
