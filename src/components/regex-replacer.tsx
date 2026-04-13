@@ -153,7 +153,6 @@ export function RegexReplacer() {
           onReplace={handleReplace}
           onReplaceAll={handleReplaceAll}
         />
-
       </div>
     </TooltipProvider>
   )

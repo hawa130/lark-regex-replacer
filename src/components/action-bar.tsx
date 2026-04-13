@@ -25,16 +25,16 @@ export function ActionBar({
     <div className="flex items-center gap-1.5">
       {hasMatches && (
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={onPrev}>
+          <Button variant="ghost" size="icon-sm" onClick={onPrev}>
             <ArrowUp />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onNext}>
+          <Button variant="ghost" size="icon-sm" onClick={onNext}>
             <ArrowDown />
           </Button>
         </div>
       )}
       {matchLabel && (
-        <span className="text-muted-foreground text-xs">{matchLabel}</span>
+        <span className="text-muted-foreground text-sm">{matchLabel}</span>
       )}
       <div className="flex-1" />
       <div className="flex items-center gap-3">
