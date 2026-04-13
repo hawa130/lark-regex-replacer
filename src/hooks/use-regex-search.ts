@@ -54,11 +54,7 @@ export function useRegexSearch(
   )
 
   const search = useCallback(
-    async (
-      pattern: string,
-      options: SearchOptions,
-      preferIndex?: number,
-    ) => {
+    async (pattern: string, options: SearchOptions, preferIndex?: number) => {
       lastPatternRef.current = pattern
       setError(null)
 
@@ -107,10 +103,7 @@ export function useRegexSearch(
         }
 
         let initialIndex = allMatches.length > 0 ? 0 : -1
-        if (
-          preferIndex !== undefined &&
-          allMatches.length > 0
-        ) {
+        if (preferIndex !== undefined && allMatches.length > 0) {
           initialIndex = Math.min(preferIndex, allMatches.length - 1)
         }
         setMatches(allMatches)

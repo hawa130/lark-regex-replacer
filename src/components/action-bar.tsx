@@ -25,10 +25,10 @@ export function ActionBar({
     <div className="flex items-center gap-1.5">
       {hasMatches && (
         <div className="flex items-center">
-          <Button variant="ghost" size="icon-sm" onClick={onPrev}>
+          <Button variant="ghost" size="icon" onClick={onPrev}>
             <ArrowUp />
           </Button>
-          <Button variant="ghost" size="icon-sm" onClick={onNext}>
+          <Button variant="ghost" size="icon" onClick={onNext}>
             <ArrowDown />
           </Button>
         </div>
@@ -37,20 +37,22 @@ export function ActionBar({
         <span className="text-muted-foreground text-xs">{matchLabel}</span>
       )}
       <div className="flex-1" />
-      <Button
-        variant="outline"
-        onClick={onReplace}
-        disabled={!editable || !hasMatches}
-      >
-        替换
-      </Button>
-      <Button
-        variant="default"
-        onClick={onReplaceAll}
-        disabled={!editable || !hasMatches}
-      >
-        全部替换
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          onClick={onReplace}
+          disabled={!editable || !hasMatches}
+        >
+          替换
+        </Button>
+        <Button
+          variant="default"
+          onClick={onReplaceAll}
+          disabled={!editable || !hasMatches}
+        >
+          全部替换
+        </Button>
+      </div>
     </div>
   )
 }
