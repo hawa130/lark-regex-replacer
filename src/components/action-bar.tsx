@@ -26,22 +26,16 @@ export function ActionBar({
       {matchLabel && (
         <span className="text-muted-foreground text-xs">{matchLabel}</span>
       )}
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onPrev}
-        disabled={!hasMatches}
-      >
-        <ArrowUp />
-      </Button>
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={onNext}
-        disabled={!hasMatches}
-      >
-        <ArrowDown />
-      </Button>
+      {hasMatches && (
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon" onClick={onPrev}>
+            <ArrowUp />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onNext}>
+            <ArrowDown />
+          </Button>
+        </div>
+      )}
       <div className="flex-1" />
       <Button
         variant="outline"
