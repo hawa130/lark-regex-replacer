@@ -106,15 +106,17 @@ export function RegexReplacer() {
         ? "无结果"
         : ""
 
-  // Compute replacement preview for the current match
+  // Only show preview when replacement uses $ patterns (e.g. $1, $&)
+  const hasSubstitution = /\$[0-9&`']/.test(replacement)
+
   const replacePreview = useMemo(() => {
+    if (!hasSubstitution) return ""
     if (currentIndex < 0 || currentIndex >= matches.length) return ""
-    if (!replacement && !pattern) return ""
     const match = matches[currentIndex]
     const regex = buildRegex(pattern, options)
     if (!regex) return ""
     return match.match.replace(regex, replacement)
-  }, [currentIndex, matches, replacement, pattern, options])
+  }, [hasSubstitution, currentIndex, matches, replacement, pattern, options])
 
   return (
     <TooltipProvider delay={300}>

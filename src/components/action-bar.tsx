@@ -23,9 +23,6 @@ export function ActionBar({
 }: ActionBarProps) {
   return (
     <div className="flex items-center gap-1.5">
-      {matchLabel && (
-        <span className="text-muted-foreground text-xs">{matchLabel}</span>
-      )}
       {hasMatches && (
         <div className="flex items-center">
           <Button variant="ghost" size="icon-sm" onClick={onPrev}>
@@ -35,6 +32,9 @@ export function ActionBar({
             <ArrowDown />
           </Button>
         </div>
+      )}
+      {matchLabel && (
+        <span className="text-muted-foreground text-xs">{matchLabel}</span>
       )}
       <div className="flex-1" />
       <Button
