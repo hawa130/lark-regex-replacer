@@ -110,6 +110,13 @@ export function useRegexSearch(
         setCurrentIndex(initialIndex)
 
         await applyHighlights(allMatches, initialIndex)
+
+        // Scroll to the current match
+        if (initialIndex >= 0 && preferIndex !== undefined) {
+          const match = allMatches[initialIndex]
+          const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
+          await docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
+        }
       } catch (e) {
         console.error("Search error:", e)
         setError("搜索出错")
