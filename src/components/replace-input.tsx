@@ -11,6 +11,23 @@ interface ReplaceInputProps {
   preview: string
 }
 
+const segmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" })
+
+function truncateMiddle(text: string, maxGraphemes: number): string {
+  const segments = [...segmenter.segment(text)]
+  if (segments.length <= maxGraphemes) return text
+  const half = Math.floor((maxGraphemes - 1) / 2)
+  const head = segments
+    .slice(0, half)
+    .map((s) => s.segment)
+    .join("")
+  const tail = segments
+    .slice(-half)
+    .map((s) => s.segment)
+    .join("")
+  return head + "…" + tail
+}
+
 export function ReplaceInput({
   replacement,
   onReplacementChange,
@@ -27,8 +44,8 @@ export function ReplaceInput({
       {preview && (
         <InputGroupAddon align="inline-end">
           <InputGroupText>
-            <span className="max-w-24 truncate text-xs" title={preview}>
-              {preview}
+            <span className="text-xs" title={preview}>
+              {truncateMiddle(preview, 12)}
             </span>
           </InputGroupText>
         </InputGroupAddon>
