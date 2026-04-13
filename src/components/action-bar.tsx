@@ -28,10 +28,10 @@ export function ActionBar({
       )}
       {hasMatches && (
         <div className="flex items-center">
-          <Button variant="ghost" size="icon" onClick={onPrev}>
+          <Button variant="ghost" size="icon-sm" onClick={onPrev}>
             <ArrowUp />
           </Button>
-          <Button variant="ghost" size="icon" onClick={onNext}>
+          <Button variant="ghost" size="icon-sm" onClick={onNext}>
             <ArrowDown />
           </Button>
         </div>
