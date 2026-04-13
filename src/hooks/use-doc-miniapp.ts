@@ -3,13 +3,14 @@ import {
   DOCS_MODE,
   type DocumentRef,
 } from "@lark-opdev/block-docs-addon-api"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 const docMiniApp = new BlockitClient().initAPI()
 
 export function useDocMiniApp() {
   const [docRef, setDocRef] = useState<DocumentRef | null>(null)
   const [editable, setEditable] = useState(false)
+  const changeListenersRef = useRef<Set<() => void>>(new Set())
 
   useEffect(() => {
     const init = async () => {
@@ -25,9 +26,13 @@ export function useDocMiniApp() {
     }
 
     init()
+  }, [])
+
+  // Permission tracking
+  useEffect(() => {
+    if (!docRef) return
 
     const onPermissionChange = async () => {
-      if (!docRef) return
       const permission =
         await docMiniApp.Service.Permission.getDocumentPermission(docRef)
       const docsMode = await docMiniApp.Env.DocsMode.getDocsMode().catch(
@@ -36,22 +41,40 @@ export function useDocMiniApp() {
       setEditable(!!permission?.editable && docsMode === DOCS_MODE.EDITING)
     }
 
-    if (docRef) {
-      docMiniApp.Service.Permission.onDocumentPermissionChange(
+    docMiniApp.Service.Permission.onDocumentPermissionChange(
+      docRef,
+      onPermissionChange,
+    )
+    return () => {
+      docMiniApp.Service.Permission.offDocumentPermissionChange(
         docRef,
         onPermissionChange,
       )
     }
+  }, [docRef])
 
-    return () => {
-      if (docRef) {
-        docMiniApp.Service.Permission.offDocumentPermissionChange(
-          docRef,
-          onPermissionChange,
-        )
+  // Document change tracking
+  useEffect(() => {
+    if (!docRef) return
+
+    const onDocumentChange = () => {
+      for (const listener of changeListenersRef.current) {
+        listener()
       }
+    }
+
+    docMiniApp.Events.onDocumentChange(docRef, onDocumentChange)
+    return () => {
+      docMiniApp.Events.offDocumentChange(docRef, onDocumentChange)
     }
   }, [docRef])
 
-  return { docMiniApp, docRef, editable }
+  const onDocumentChange = useCallback((listener: () => void) => {
+    changeListenersRef.current.add(listener)
+    return () => {
+      changeListenersRef.current.delete(listener)
+    }
+  }, [])
+
+  return { docMiniApp, docRef, editable, onDocumentChange }
 }

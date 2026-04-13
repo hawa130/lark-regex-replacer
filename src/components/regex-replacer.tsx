@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronUp } from "lucide-react"
-import { useCallback, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -11,7 +11,7 @@ import { SearchInput } from "./search-input"
 import { StatusBar } from "./status-bar"
 
 export function RegexReplacer() {
-  const { docMiniApp, docRef, editable } = useDocMiniApp()
+  const { docMiniApp, docRef, editable, onDocumentChange } = useDocMiniApp()
   const {
     matches,
     currentIndex,
@@ -46,6 +46,20 @@ export function RegexReplacer() {
     },
     [search, isRegex, caseSensitive, wholeWord],
   )
+
+  // Re-search when document content changes
+  const patternRef = useRef(pattern)
+  useEffect(() => {
+    patternRef.current = pattern
+  }, [pattern])
+
+  useEffect(() => {
+    return onDocumentChange(() => {
+      if (patternRef.current) {
+        triggerSearch(patternRef.current)
+      }
+    })
+  }, [onDocumentChange, triggerSearch])
 
   const handlePatternChange = useCallback(
     (value: string) => {

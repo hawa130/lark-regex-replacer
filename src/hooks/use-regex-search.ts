@@ -151,13 +151,14 @@ export function useRegexSearch(
         const regex = buildRegex(pattern, options)
         if (!regex || !block.data?.text?.elements) return
 
-        // Rebuild text, apply replacement only for the current match
         const rawText = getRawTextFromBlock(docMiniApp, block)
         if (!rawText) return
 
+        // Resolve $1/$& etc. by running replace on just the matched substring
+        const resolvedReplacement = match.match.replace(regex, replacement)
         const before = rawText.slice(0, match.index)
         const after = rawText.slice(match.index + match.length)
-        const newText = before + replacement + after
+        const newText = before + resolvedReplacement + after
 
         // Update the block with replaced text (simple single-run approach)
         const newElements = rebuildElements(block.data.text.elements, newText)
@@ -183,16 +184,11 @@ export function useRegexSearch(
       if (!regex) return
 
       try {
-        // Group matches by block
-        const matchesByBlock = new Map<number, MatchResult[]>()
-        for (const m of matches) {
-          const existing = matchesByBlock.get(m.blockId) ?? []
-          existing.push(m)
-          matchesByBlock.set(m.blockId, existing)
-        }
+        // Collect unique block IDs
+        const blockIds = [...new Set(matches.map((m) => m.blockId))]
 
         // Replace in each block
-        for (const [blockId, blockMatches] of matchesByBlock) {
+        for (const blockId of blockIds) {
           const blockRef = docMiniApp.getBlockRefById(docRef, blockId)
           const block = await docMiniApp.Block.getBlock(blockRef)
           if (!block.data?.text?.elements) continue
@@ -200,15 +196,8 @@ export function useRegexSearch(
           const rawText = getRawTextFromBlock(docMiniApp, block)
           if (!rawText) continue
 
-          // Apply all replacements (from end to start to preserve offsets)
-          let newText = rawText
-          const sorted = [...blockMatches].sort((a, b) => b.index - a.index)
-          for (const m of sorted) {
-            newText =
-              newText.slice(0, m.index) +
-              replacement +
-              newText.slice(m.index + m.length)
-          }
+          // String.replace with a global regex natively resolves $1/$& etc.
+          const newText = rawText.replace(regex, replacement)
 
           const newElements = rebuildElements(block.data.text.elements, newText)
           await docMiniApp.Block.updateBlock(blockRef, {
