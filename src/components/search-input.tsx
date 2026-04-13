@@ -1,7 +1,11 @@
 import { ALargeSmall, Regex, WholeWord } from "lucide-react"
 
-import { Input } from "@/components/ui/input"
-import { Toggle } from "@/components/ui/toggle"
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+  InputGroupToggle,
+} from "@/components/ui/input-group"
 import {
   Tooltip,
   TooltipContent,
@@ -32,28 +36,26 @@ export function SearchInput({
   onKeyDown,
 }: SearchInputProps) {
   return (
-    <div className="flex items-center gap-1.5">
-      <Input
+    <InputGroup>
+      <InputGroupInput
         value={pattern}
         onChange={(e) => onPatternChange(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="查找..."
-        className="h-8 flex-1 text-sm"
+        className="text-sm"
         autoFocus
       />
-
-      <div className="flex items-center gap-0.5">
+      <InputGroupAddon align="inline-end">
         <Tooltip>
           <TooltipTrigger
             render={
-              <Toggle
+              <InputGroupToggle
                 pressed={isRegex}
                 onPressedChange={onIsRegexChange}
                 aria-label="正则表达式"
-                className="p-0"
               >
                 <Regex />
-              </Toggle>
+              </InputGroupToggle>
             }
           />
           <TooltipContent>正则表达式</TooltipContent>
@@ -62,14 +64,13 @@ export function SearchInput({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Toggle
+              <InputGroupToggle
                 pressed={caseSensitive}
                 onPressedChange={onCaseSensitiveChange}
                 aria-label="区分大小写"
-                className="p-0"
               >
                 <ALargeSmall />
-              </Toggle>
+              </InputGroupToggle>
             }
           />
           <TooltipContent>区分大小写</TooltipContent>
@@ -78,20 +79,19 @@ export function SearchInput({
         <Tooltip>
           <TooltipTrigger
             render={
-              <Toggle
+              <InputGroupToggle
                 pressed={wholeWord}
                 onPressedChange={onWholeWordChange}
                 disabled={isRegex}
                 aria-label="全字匹配"
-                className="p-0"
               >
                 <WholeWord />
-              </Toggle>
+              </InputGroupToggle>
             }
           />
           <TooltipContent>全字匹配</TooltipContent>
         </Tooltip>
-      </div>
-    </div>
+      </InputGroupAddon>
+    </InputGroup>
   )
 }

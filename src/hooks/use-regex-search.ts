@@ -34,9 +34,9 @@ export function useRegexSearch(
     async (allMatches: MatchResult[], activeIndex: number) => {
       if (!docRef) return
 
-      await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
-        docRef,
-      ).catch(() => {})
+      await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef).catch(
+        () => {},
+      )
 
       if (allMatches.length === 0) return
 
@@ -46,9 +46,9 @@ export function useRegexSearch(
         style: { color: i === activeIndex ? "R500" : "Y500" },
       }))
 
-      await docMiniApp.Block.TextualBlock.highlightTexts(
-        highlightRefs,
-      ).catch(() => {})
+      await docMiniApp.Block.TextualBlock.highlightTexts(highlightRefs).catch(
+        () => {},
+      )
     },
     [docMiniApp, docRef],
   )

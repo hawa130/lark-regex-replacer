@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { useDocMiniApp } from "@/hooks/use-doc-miniapp"
 import { useRegexSearch } from "@/hooks/use-regex-search"
+import { buildRegex } from "@/lib/block-text"
 
 import { ActionBar } from "./action-bar"
 import { ReplaceInput } from "./replace-input"
@@ -107,6 +108,16 @@ export function RegexReplacer() {
         ? "无结果"
         : ""
 
+  // Compute replacement preview for the current match
+  const replacePreview = useMemo(() => {
+    if (currentIndex < 0 || currentIndex >= matches.length) return ""
+    if (!replacement && !pattern) return ""
+    const match = matches[currentIndex]
+    const regex = buildRegex(pattern, options)
+    if (!regex) return ""
+    return match.match.replace(regex, replacement)
+  }, [currentIndex, matches, replacement, pattern, options])
+
   return (
     <TooltipProvider delay={300}>
       <div className="flex flex-col gap-2 px-3 pb-3">
@@ -129,6 +140,7 @@ export function RegexReplacer() {
         <ReplaceInput
           replacement={replacement}
           onReplacementChange={setReplacement}
+          preview={replacePreview}
         />
 
         <ActionBar
