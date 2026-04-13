@@ -20,6 +20,41 @@ interface SearchOptions {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DocMiniAppType = any
 
+/**
+ * Find the match index nearest to the cursor in the given direction.
+ * matches must be in document order.
+ */
+function findMatchIndexNearCursor(
+  matches: MatchResult[],
+  cursorBlockId: number,
+  cursorOffset: number,
+  blockOrder: Map<number, number>,
+  direction: "forward" | "backward",
+): number {
+  if (matches.length === 0) return -1
+
+  const cursorOrder = blockOrder.get(cursorBlockId) ?? -1
+
+  if (direction === "forward") {
+    for (let i = 0; i < matches.length; i++) {
+      const m = matches[i]
+      const mOrder = blockOrder.get(m.blockId) ?? -1
+      if (mOrder > cursorOrder) return i
+      if (mOrder === cursorOrder && m.index >= cursorOffset) return i
+    }
+    return 0 // wrap to first
+  }
+
+  // backward
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i]
+    const mOrder = blockOrder.get(m.blockId) ?? -1
+    if (mOrder < cursorOrder) return i
+    if (mOrder === cursorOrder && m.index < cursorOffset) return i
+  }
+  return matches.length - 1 // wrap to last
+}
+
 export function useRegexSearch(
   docMiniApp: DocMiniAppType,
   docRef: DocumentRef | null,
@@ -29,6 +64,8 @@ export function useRegexSearch(
   const [isSearching, setIsSearching] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const lastPatternRef = useRef("")
+  const blockOrderRef = useRef<Map<number, number>>(new Map())
+  const matchesRef = useRef<MatchResult[]>([])
 
   const applyHighlights = useCallback(
     async (allMatches: MatchResult[], activeIndex: number) => {
@@ -53,6 +90,61 @@ export function useRegexSearch(
     [docMiniApp, docRef],
   )
 
+  const selectMatch = useCallback(
+    async (match: MatchResult) => {
+      if (!docRef) return
+      await docMiniApp.Selection.setSelection([
+        {
+          type: "text",
+          ref: {
+            docRef,
+            blockId: match.blockId,
+            range: [match.index, match.index + match.length],
+          },
+        },
+      ]).catch(() => {
+        // Fallback to scrollToBlock if setSelection fails
+        const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
+        return docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
+      })
+    },
+    [docMiniApp, docRef],
+  )
+
+  const getCursorPosition = useCallback(async (): Promise<{
+    blockId: number
+    offset: number
+  } | null> => {
+    if (!docRef) return null
+    try {
+      const selection = await docMiniApp.Selection.getSelection(docRef)
+      if (selection && selection.length > 0) {
+        const item = selection[0]
+        return {
+          blockId: item.blockId ?? item.ref?.blockId,
+          offset: item.ref?.range?.[0] ?? 0,
+        }
+      }
+    } catch {
+      // Selection not available
+    }
+    return null
+  }, [docMiniApp, docRef])
+
+  const goToMatch = useCallback(
+    async (index: number, allMatches?: MatchResult[]) => {
+      const m = allMatches ?? matchesRef.current
+      if (m.length === 0) return
+
+      const wrappedIndex = ((index % m.length) + m.length) % m.length
+      setCurrentIndex(wrappedIndex)
+
+      await applyHighlights(m, wrappedIndex)
+      await selectMatch(m[wrappedIndex])
+    },
+    [applyHighlights, selectMatch],
+  )
+
   const search = useCallback(
     async (pattern: string, options: SearchOptions, preferIndex?: number) => {
       lastPatternRef.current = pattern
@@ -60,6 +152,7 @@ export function useRegexSearch(
 
       if (!pattern || !docRef) {
         setMatches([])
+        matchesRef.current = []
         setCurrentIndex(-1)
         if (docRef) {
           await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(
@@ -73,6 +166,7 @@ export function useRegexSearch(
       if (!regex) {
         setError("无效的正则表达式")
         setMatches([])
+        matchesRef.current = []
         setCurrentIndex(-1)
         return
       }
@@ -82,6 +176,11 @@ export function useRegexSearch(
       try {
         const rootBlock = await docMiniApp.Document.getRootBlock(docRef)
         const textBlocks = collectTextualBlocks(rootBlock)
+
+        // Build block order map
+        const orderMap = new Map<number, number>()
+        textBlocks.forEach((block, i) => orderMap.set(block.id, i))
+        blockOrderRef.current = orderMap
 
         const allMatches: MatchResult[] = []
 
@@ -102,21 +201,36 @@ export function useRegexSearch(
           }
         }
 
-        let initialIndex = allMatches.length > 0 ? 0 : -1
-        if (preferIndex !== undefined && allMatches.length > 0) {
-          initialIndex = Math.min(preferIndex, allMatches.length - 1)
-        }
         setMatches(allMatches)
-        setCurrentIndex(initialIndex)
+        matchesRef.current = allMatches
 
-        await applyHighlights(allMatches, initialIndex)
-
-        // Scroll to the current match
-        if (initialIndex >= 0) {
-          const match = allMatches[initialIndex]
-          const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
-          await docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
+        if (allMatches.length === 0) {
+          setCurrentIndex(-1)
+          await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef)
+          return
         }
+
+        // Determine initial index
+        let initialIndex: number
+        if (preferIndex !== undefined) {
+          initialIndex = Math.min(preferIndex, allMatches.length - 1)
+        } else {
+          // Find first match at/after cursor
+          const cursor = await getCursorPosition()
+          if (cursor) {
+            initialIndex = findMatchIndexNearCursor(
+              allMatches,
+              cursor.blockId,
+              cursor.offset,
+              orderMap,
+              "forward",
+            )
+          } else {
+            initialIndex = 0
+          }
+        }
+
+        await goToMatch(initialIndex, allMatches)
       } catch (e) {
         console.error("Search error:", e)
         setError("搜索出错")
@@ -124,33 +238,46 @@ export function useRegexSearch(
         setIsSearching(false)
       }
     },
-    [docMiniApp, docRef, applyHighlights],
+    [docMiniApp, docRef, getCursorPosition, goToMatch],
   )
 
-  const goToMatch = useCallback(
-    async (index: number) => {
-      if (matches.length === 0 || !docRef) return
+  const next = useCallback(async () => {
+    const m = matchesRef.current
+    if (m.length === 0) return
 
-      const wrappedIndex =
-        ((index % matches.length) + matches.length) % matches.length
-      setCurrentIndex(wrappedIndex)
+    const cursor = await getCursorPosition()
+    if (cursor) {
+      const idx = findMatchIndexNearCursor(
+        m,
+        cursor.blockId,
+        cursor.offset + 1, // +1 to skip current position
+        blockOrderRef.current,
+        "forward",
+      )
+      await goToMatch(idx)
+    } else {
+      await goToMatch(currentIndex + 1)
+    }
+  }, [getCursorPosition, goToMatch, currentIndex])
 
-      await applyHighlights(matches, wrappedIndex)
+  const prev = useCallback(async () => {
+    const m = matchesRef.current
+    if (m.length === 0) return
 
-      const match = matches[wrappedIndex]
-      const blockRef = docMiniApp.getBlockRefById(docRef, match.blockId)
-      await docMiniApp.Viewport.scrollToBlock(blockRef).catch(() => {})
-    },
-    [docMiniApp, docRef, matches, applyHighlights],
-  )
-
-  const next = useCallback(() => {
-    goToMatch(currentIndex + 1)
-  }, [currentIndex, goToMatch])
-
-  const prev = useCallback(() => {
-    goToMatch(currentIndex - 1)
-  }, [currentIndex, goToMatch])
+    const cursor = await getCursorPosition()
+    if (cursor) {
+      const idx = findMatchIndexNearCursor(
+        m,
+        cursor.blockId,
+        cursor.offset,
+        blockOrderRef.current,
+        "backward",
+      )
+      await goToMatch(idx)
+    } else {
+      await goToMatch(currentIndex - 1)
+    }
+  }, [getCursorPosition, goToMatch, currentIndex])
 
   const replaceCurrent = useCallback(
     async (replacement: string, pattern: string, options: SearchOptions) => {
@@ -167,13 +294,11 @@ export function useRegexSearch(
         const rawText = getRawTextFromBlock(docMiniApp, block)
         if (!rawText) return
 
-        // Resolve $1/$& etc. by running replace on just the matched substring
         const resolvedReplacement = match.match.replace(regex, replacement)
         const before = rawText.slice(0, match.index)
         const after = rawText.slice(match.index + match.length)
         const newText = before + resolvedReplacement + after
 
-        // Update the block with replaced text (simple single-run approach)
         const newElements = rebuildElements(block.data.text.elements, newText)
         await docMiniApp.Block.updateBlock(blockRef, {
           ...block.data,
@@ -197,10 +322,8 @@ export function useRegexSearch(
       if (!regex) return
 
       try {
-        // Collect unique block IDs
         const blockIds = [...new Set(matches.map((m) => m.blockId))]
 
-        // Replace in each block
         for (const blockId of blockIds) {
           const blockRef = docMiniApp.getBlockRefById(docRef, blockId)
           const block = await docMiniApp.Block.getBlock(blockRef)
@@ -209,7 +332,6 @@ export function useRegexSearch(
           const rawText = getRawTextFromBlock(docMiniApp, block)
           if (!rawText) continue
 
-          // String.replace with a global regex natively resolves $1/$& etc.
           const newText = rawText.replace(regex, replacement)
 
           const newElements = rebuildElements(block.data.text.elements, newText)
@@ -219,9 +341,9 @@ export function useRegexSearch(
           })
         }
 
-        // Clear highlights and reset
         await docMiniApp.Block.TextualBlock.clearAllHighlightTexts(docRef)
         setMatches([])
+        matchesRef.current = []
         setCurrentIndex(-1)
       } catch (e) {
         console.error("Replace all error:", e)
@@ -243,9 +365,6 @@ export function useRegexSearch(
   }
 }
 
-/**
- * Extract raw text from a block using the appropriate API.
- */
 function getRawTextFromBlock(
   docMiniApp: DocMiniAppType,
   block: BlockSnapshot,
@@ -260,11 +379,6 @@ function getRawTextFromBlock(
   }
 }
 
-/**
- * Rebuild text elements preserving the style of the first element.
- * This is a simplified approach -- for complex multi-styled blocks,
- * a more sophisticated element-splitting algorithm would be needed.
- */
 function rebuildElements(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   elements: any[],
@@ -273,7 +387,6 @@ function rebuildElements(
 ): any[] {
   if (elements.length === 0) return elements
 
-  // Preserve the style of the first text_run
   const firstStyle = elements[0]?.text_run?.style ?? {}
 
   return [
