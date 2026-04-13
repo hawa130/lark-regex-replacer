@@ -25,7 +25,7 @@ export function RegexReplacer() {
 
   const [pattern, setPattern] = useState("")
   const [replacement, setReplacement] = useState("")
-  const [isRegex, setIsRegex] = useState(false)
+  const [isRegex, setIsRegex] = useState(true)
   const [caseSensitive, setCaseSensitive] = useState(false)
   const [wholeWord, setWholeWord] = useState(false)
 
@@ -120,7 +120,7 @@ export function RegexReplacer() {
 
   return (
     <TooltipProvider delay={300}>
-      <div className="flex flex-col gap-3 p-4 pt-0">
+      <div className="flex flex-col gap-3 px-4 pt-1">
         <SearchInput
           pattern={pattern}
           onPatternChange={handlePatternChange}
