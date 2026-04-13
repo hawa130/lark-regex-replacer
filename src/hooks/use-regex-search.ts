@@ -10,6 +10,7 @@ import {
   findMatches,
   type MatchResult,
 } from "@/lib/block-text"
+import { processItemsIdle } from "@/lib/idle"
 
 interface SearchOptions {
   isRegex: boolean
@@ -66,6 +67,7 @@ export function useRegexSearch(
   const lastPatternRef = useRef("")
   const blockOrderRef = useRef<Map<number, number>>(new Map())
   const matchesRef = useRef<MatchResult[]>([])
+  const abortRef = useRef<AbortController | null>(null)
 
   const applyHighlights = useCallback(
     async (allMatches: MatchResult[], activeIndex: number) => {
@@ -147,6 +149,11 @@ export function useRegexSearch(
 
   const search = useCallback(
     async (pattern: string, options: SearchOptions, preferIndex?: number) => {
+      // Abort previous search
+      abortRef.current?.abort()
+      const controller = new AbortController()
+      abortRef.current = controller
+
       lastPatternRef.current = pattern
       setError(null)
 
@@ -182,24 +189,29 @@ export function useRegexSearch(
         textBlocks.forEach((block, i) => orderMap.set(block.id, i))
         blockOrderRef.current = orderMap
 
+        // Process blocks in idle time
         const allMatches: MatchResult[] = []
 
-        for (const block of textBlocks) {
-          const rawText = getRawTextFromBlock(docMiniApp, block)
-          if (!rawText) continue
+        await processItemsIdle(
+          textBlocks,
+          (block) => {
+            const rawText = getRawTextFromBlock(docMiniApp, block)
+            if (!rawText) return
 
-          const blockMatches = findMatches(rawText, regex)
+            const blockMatches = findMatches(rawText, regex)
 
-          for (const m of blockMatches) {
-            allMatches.push({
-              blockId: block.id,
-              blockRef: block.ref,
-              index: m.index,
-              length: m.length,
-              match: m.match,
-            })
-          }
-        }
+            for (const m of blockMatches) {
+              allMatches.push({
+                blockId: block.id,
+                blockRef: block.ref,
+                index: m.index,
+                length: m.length,
+                match: m.match,
+              })
+            }
+          },
+          controller.signal,
+        )
 
         setMatches(allMatches)
         matchesRef.current = allMatches
@@ -215,7 +227,6 @@ export function useRegexSearch(
         if (preferIndex !== undefined) {
           initialIndex = Math.min(preferIndex, allMatches.length - 1)
         } else {
-          // Find first match at/after cursor
           const cursor = await getCursorPosition()
           if (cursor) {
             initialIndex = findMatchIndexNearCursor(
@@ -232,10 +243,14 @@ export function useRegexSearch(
 
         await goToMatch(initialIndex, allMatches)
       } catch (e) {
+        // Ignore abort errors
+        if (e instanceof DOMException && e.name === "AbortError") return
         console.error("Search error:", e)
         setError("搜索出错")
       } finally {
-        setIsSearching(false)
+        if (!controller.signal.aborted) {
+          setIsSearching(false)
+        }
       }
     },
     [docMiniApp, docRef, getCursorPosition, goToMatch],
