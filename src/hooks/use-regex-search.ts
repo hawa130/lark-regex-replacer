@@ -54,7 +54,11 @@ export function useRegexSearch(
   )
 
   const search = useCallback(
-    async (pattern: string, options: SearchOptions) => {
+    async (
+      pattern: string,
+      options: SearchOptions,
+      preferIndex?: number,
+    ) => {
       lastPatternRef.current = pattern
       setError(null)
 
@@ -102,7 +106,13 @@ export function useRegexSearch(
           }
         }
 
-        const initialIndex = allMatches.length > 0 ? 0 : -1
+        let initialIndex = allMatches.length > 0 ? 0 : -1
+        if (
+          preferIndex !== undefined &&
+          allMatches.length > 0
+        ) {
+          initialIndex = Math.min(preferIndex, allMatches.length - 1)
+        }
         setMatches(allMatches)
         setCurrentIndex(initialIndex)
 
@@ -170,8 +180,8 @@ export function useRegexSearch(
           text: { elements: newElements },
         })
 
-        // Re-run search to update matches
-        await search(pattern, options)
+        // Re-run search, keeping the same index so it points to the next match
+        await search(pattern, options, currentIndex)
       } catch (e) {
         console.error("Replace error:", e)
       }
