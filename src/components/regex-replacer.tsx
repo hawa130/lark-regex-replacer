@@ -49,9 +49,6 @@ export function RegexReplacer() {
 
   // Re-search when document content changes
   const patternRef = useRef(pattern)
-  useEffect(() => {
-    patternRef.current = pattern
-  }, [pattern])
 
   useEffect(() => {
     return onDocumentChange(() => {
@@ -63,6 +60,7 @@ export function RegexReplacer() {
 
   const handlePatternChange = useCallback(
     (value: string) => {
+      patternRef.current = value
       setPattern(value)
       triggerSearch(value)
     },

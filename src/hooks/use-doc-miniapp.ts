@@ -12,43 +12,52 @@ export function useDocMiniApp() {
   const [editable, setEditable] = useState(false)
   const changeListenersRef = useRef<Set<() => void>>(new Set())
 
+  // Initialize: fetch docRef only, permission is handled by the next effect
   useEffect(() => {
+    let cancelled = false
+
     const init = async () => {
       const ref = await docMiniApp.getActiveDocumentRef()
-      setDocRef(ref)
-
-      const permission =
-        await docMiniApp.Service.Permission.getDocumentPermission(ref)
-      const docsMode = await docMiniApp.Env.DocsMode.getDocsMode().catch(
-        () => null,
-      )
-      setEditable(!!permission?.editable && docsMode === DOCS_MODE.EDITING)
+      if (!cancelled) {
+        setDocRef(ref)
+      }
     }
 
     init()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
-  // Permission tracking
+  // Permission tracking: runs on initial docRef and on changes
   useEffect(() => {
     if (!docRef) return
 
-    const onPermissionChange = async () => {
+    let cancelled = false
+
+    const updateEditable = async () => {
       const permission =
         await docMiniApp.Service.Permission.getDocumentPermission(docRef)
       const docsMode = await docMiniApp.Env.DocsMode.getDocsMode().catch(
         () => null,
       )
-      setEditable(!!permission?.editable && docsMode === DOCS_MODE.EDITING)
+      if (!cancelled) {
+        setEditable(!!permission?.editable && docsMode === DOCS_MODE.EDITING)
+      }
     }
+
+    updateEditable()
 
     docMiniApp.Service.Permission.onDocumentPermissionChange(
       docRef,
-      onPermissionChange,
+      updateEditable,
     )
     return () => {
+      cancelled = true
       docMiniApp.Service.Permission.offDocumentPermissionChange(
         docRef,
-        onPermissionChange,
+        updateEditable,
       )
     }
   }, [docRef])
@@ -57,15 +66,15 @@ export function useDocMiniApp() {
   useEffect(() => {
     if (!docRef) return
 
-    const onDocumentChange = () => {
+    const handler = () => {
       for (const listener of changeListenersRef.current) {
         listener()
       }
     }
 
-    docMiniApp.Events.onDocumentChange(docRef, onDocumentChange)
+    docMiniApp.Events.onDocumentChange(docRef, handler)
     return () => {
-      docMiniApp.Events.offDocumentChange(docRef, onDocumentChange)
+      docMiniApp.Events.offDocumentChange(docRef, handler)
     }
   }, [docRef])
 
