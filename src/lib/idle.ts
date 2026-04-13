@@ -1,7 +1,8 @@
+const IDLE_TIMEOUT = 1000
+
 /**
- * Process an array of items during browser idle periods.
- * Uses requestIdleCallback + timeRemaining() for adaptive batching.
- * Supports cancellation via AbortSignal.
+ * Process items during browser idle periods with adaptive batching.
+ * Cancellable via AbortSignal. Rejects with DOMException on abort.
  */
 export function processItemsIdle<T>(
   items: T[],
@@ -10,28 +11,40 @@ export function processItemsIdle<T>(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     let i = 0
+    let handle: number
+
+    const abortError = () =>
+      new DOMException("Processing aborted", "AbortError")
+
+    function onAbort() {
+      cancelIdleCallback(handle)
+      reject(abortError())
+    }
 
     function work(deadline: IdleDeadline) {
       if (signal.aborted) {
-        reject(signal.reason)
+        reject(abortError())
         return
       }
 
       while (i < items.length && deadline.timeRemaining() > 0) {
-        if (signal.aborted) {
-          reject(signal.reason)
-          return
-        }
         processOne(items[i++])
       }
 
       if (i < items.length) {
-        requestIdleCallback(work)
+        handle = requestIdleCallback(work, { timeout: IDLE_TIMEOUT })
       } else {
+        signal.removeEventListener("abort", onAbort)
         resolve()
       }
     }
 
-    requestIdleCallback(work)
+    if (signal.aborted) {
+      reject(abortError())
+      return
+    }
+
+    signal.addEventListener("abort", onAbort)
+    handle = requestIdleCallback(work, { timeout: IDLE_TIMEOUT })
   })
 }
